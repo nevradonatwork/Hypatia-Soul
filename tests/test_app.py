@@ -74,3 +74,18 @@ def test_counts_page_renders_totals_and_weekly(client):
     resp = client.get("/counts")
     assert resp.status_code == 200
     assert b"system" in resp.data
+
+
+def test_submit_unsure_and_unanswered_yes_no_fields_store_null(client):
+    client.post("/submit", data={
+        "raw_description": "he cancelled last minute again",
+        "extract_fact": "cancelled pickup with no notice",
+        "transform_signal_type": "needs_processing",
+        "extract_is_evidence_based": "unsure",
+        # filter_feels_familiar intentionally omitted (not answered)
+    })
+    _, params = client.fake_conn._cursor.executed[0]
+    # column order: language, source_label, raw_description, extract_fact,
+    # extract_third_party_version, extract_is_evidence_based, extract_is_recurring_pattern, ...
+    assert params[5] is None  # extract_is_evidence_based -> "unsure" maps to NULL
+    assert params[11] is None  # filter_feels_familiar -> unanswered maps to NULL

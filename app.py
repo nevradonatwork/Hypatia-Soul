@@ -14,6 +14,19 @@ def current_lang() -> str:
     return request.args.get("lang") or session.get("lang", "en")
 
 
+def yes_no_none(value):
+    """Map a yes/no/unsure radio value to True/False/None.
+
+    Anything other than an explicit "yes" or "no" (unanswered, or the
+    "unsure" option) is stored as NULL rather than forced into False.
+    """
+    if value == "yes":
+        return True
+    if value == "no":
+        return False
+    return None
+
+
 @app.route("/")
 def index():
     lang = current_lang()
@@ -32,16 +45,16 @@ def submit():
         "raw_description": form.get("raw_description", ""),
         "extract_fact": form.get("extract_fact", ""),
         "extract_third_party_version": form.get("extract_third_party_version"),
-        "extract_is_evidence_based": form.get("extract_is_evidence_based") == "yes",
-        "extract_is_recurring_pattern": form.get("extract_is_recurring_pattern") == "yes",
+        "extract_is_evidence_based": yes_no_none(form.get("extract_is_evidence_based")),
+        "extract_is_recurring_pattern": yes_no_none(form.get("extract_is_recurring_pattern")),
         "transform_intensity_score": form.get("transform_intensity_score"),
-        "transform_is_proportional": form.get("transform_is_proportional") == "yes",
+        "transform_is_proportional": yes_no_none(form.get("transform_is_proportional")),
         "transform_signal_type": form.get("transform_signal_type"),
-        "transform_serves_purpose": form.get("transform_serves_purpose") == "yes",
-        "filter_feels_familiar": form.get("filter_feels_familiar") == "yes",
+        "transform_serves_purpose": yes_no_none(form.get("transform_serves_purpose")),
+        "filter_feels_familiar": yes_no_none(form.get("filter_feels_familiar")),
         "filter_reaction_vs_event_size": form.get("filter_reaction_vs_event_size"),
-        "filter_would_react_same_stranger": form.get("filter_would_react_same_stranger") == "yes",
-        "filter_echoes_childhood": form.get("filter_echoes_childhood") == "yes",
+        "filter_would_react_same_stranger": yes_no_none(form.get("filter_would_react_same_stranger")),
+        "filter_echoes_childhood": yes_no_none(form.get("filter_echoes_childhood")),
         "destination_note": form.get("destination_note"),
     }
 
