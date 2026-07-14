@@ -1,5 +1,5 @@
 -- Trigger Tracker - SQL Server schema
--- Run this once against your database (SQL login, not Windows Auth)
+-- Run this once against your database (Windows Authentication or SQL login, both work)
 
 IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'TriggerTracker')
 BEGIN

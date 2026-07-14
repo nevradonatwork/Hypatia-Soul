@@ -1,12 +1,13 @@
-"""Data layer. Connects to SQL Server via pyodbc using a SQL login.
+"""Data layer. Connects to SQL Server via pyodbc.
 
 Connection settings come from environment variables so credentials are
 never hardcoded:
 
-    TT_DB_SERVER    e.g. "localhost\\SQLEXPRESS" or "localhost,1433"
+    TT_DB_SERVER    e.g. "NevraDonat\\SQLEXPRESS" or "localhost,1433"
     TT_DB_NAME      e.g. "TriggerTracker"
-    TT_DB_USER      SQL login username
-    TT_DB_PASSWORD  SQL login password
+    TT_DB_AUTH      "windows" (default) or "sql"
+    TT_DB_USER      SQL login username (only when TT_DB_AUTH=sql)
+    TT_DB_PASSWORD  SQL login password (only when TT_DB_AUTH=sql)
     TT_DB_DRIVER    optional, defaults to "ODBC Driver 17 for SQL Server"
 """
 
@@ -25,22 +26,31 @@ except ImportError:  # pyodbc may not be installed in every environment (e.g. te
 
 
 def get_connection_string() -> str:
-    server = os.environ.get("TT_DB_SERVER", "localhost")
+    server = os.environ.get("TT_DB_SERVER", "NevraDonat\\SQLEXPRESS")
     database = os.environ.get("TT_DB_NAME", "TriggerTracker")
-    user = os.environ.get("TT_DB_USER")
-    password = os.environ.get("TT_DB_PASSWORD")
     driver = os.environ.get("TT_DB_DRIVER", "ODBC Driver 17 for SQL Server")
+    auth = os.environ.get("TT_DB_AUTH", "windows").strip().lower()
 
-    if not user or not password:
-        raise RuntimeError(
-            "TT_DB_USER and TT_DB_PASSWORD environment variables must be set "
-            "(SQL login, not Windows Authentication)."
+    if auth == "windows":
+        return (
+            f"DRIVER={{{driver}}};SERVER={server};DATABASE={database};"
+            f"Trusted_Connection=yes;TrustServerCertificate=yes;"
         )
 
-    return (
-        f"DRIVER={{{driver}}};SERVER={server};DATABASE={database};"
-        f"UID={user};PWD={password};TrustServerCertificate=yes;"
-    )
+    if auth == "sql":
+        user = os.environ.get("TT_DB_USER")
+        password = os.environ.get("TT_DB_PASSWORD")
+        if not user or not password:
+            raise RuntimeError(
+                "TT_DB_USER and TT_DB_PASSWORD environment variables must be set "
+                "when TT_DB_AUTH=sql."
+            )
+        return (
+            f"DRIVER={{{driver}}};SERVER={server};DATABASE={database};"
+            f"UID={user};PWD={password};TrustServerCertificate=yes;"
+        )
+
+    raise RuntimeError(f"Unknown TT_DB_AUTH value: {auth!r} (expected 'windows' or 'sql')")
 
 
 def get_connection():

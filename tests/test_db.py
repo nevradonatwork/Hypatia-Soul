@@ -91,7 +91,18 @@ def test_get_weekly_counts_returns_rows():
     assert rows == [(2026, 2, "archive", 1)]
 
 
-def test_get_connection_string_raises_without_credentials(monkeypatch):
+def test_get_connection_string_defaults_to_windows_auth(monkeypatch):
+    monkeypatch.delenv("TT_DB_AUTH", raising=False)
+    monkeypatch.delenv("TT_DB_USER", raising=False)
+    monkeypatch.delenv("TT_DB_PASSWORD", raising=False)
+    monkeypatch.setenv("TT_DB_SERVER", "NevraDonat\\SQLEXPRESS")
+    conn_str = db.get_connection_string()
+    assert "Trusted_Connection=yes" in conn_str
+    assert "SERVER=NevraDonat\\SQLEXPRESS" in conn_str
+
+
+def test_get_connection_string_raises_without_credentials_when_sql_auth(monkeypatch):
+    monkeypatch.setenv("TT_DB_AUTH", "sql")
     monkeypatch.delenv("TT_DB_USER", raising=False)
     monkeypatch.delenv("TT_DB_PASSWORD", raising=False)
     try:
@@ -102,6 +113,7 @@ def test_get_connection_string_raises_without_credentials(monkeypatch):
 
 
 def test_get_connection_string_builds_with_sql_login(monkeypatch):
+    monkeypatch.setenv("TT_DB_AUTH", "sql")
     monkeypatch.setenv("TT_DB_USER", "nevra")
     monkeypatch.setenv("TT_DB_PASSWORD", "secret")
     monkeypatch.setenv("TT_DB_SERVER", "localhost")
