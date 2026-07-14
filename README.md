@@ -4,7 +4,7 @@ ETL mantığıyla kurulmuş, tetikleyici olayları extract -> transform -> filte
 adımlarından geçiren, sonucu "system" (avukat/mahkeme/kayıt) veya "archive" (eski duygu)
 olarak etiketleyen basit bir uygulama. EN/TR dil desteği var.
 
-## Kurulum (local, SQL Server SQL login ile)
+## Kurulum (local SQL Server'a bağlanma)
 
 1. SQL Server'da `schema.sql` dosyasını çalıştır (SQL Server Management Studio ile açıp
    execute edebilirsin, ya da sqlcmd ile).
@@ -13,6 +13,12 @@ olarak etiketleyen basit bir uygulama. EN/TR dil desteği var.
 ```
 cp .env.example .env
 ```
+
+Varsayılan ayar Windows Authentication (`TT_DB_AUTH=windows`) ile SSMS'te gördüğün
+`NevraDonat\SQLEXPRESS` sunucusuna bağlanacak şekildedir — SSMS'e Windows hesabınla
+(`NEVRADONAT\nevra`) nasıl giriyorsan, uygulama da aynı Windows kimliğiyle bağlanır,
+ayrı bir SQL login oluşturmana gerek yok. Ayrı bir SQL login kullanmak istersen
+`.env` içinde `TT_DB_AUTH=sql` yapıp `TT_DB_USER`/`TT_DB_PASSWORD` gir.
 
 `.env` dosyası `.gitignore`'da, yani GitHub'a asla gitmiyor. `db.py` bu dosyayı
 otomatik okuyor (python-dotenv ile).
