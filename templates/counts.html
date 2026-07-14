@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ T.counts_title }}</title>
+  <style>
+    body { font-family: sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 32px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+  </style>
+</head>
+<body>
+  <p><a href="/?lang={{ lang }}">&larr; {{ T.app_title }}</a></p>
+  <h1>{{ T.counts_title }}</h1>
+
+  <table>
+    <tr><th>destination_tag</th><th>{{ T.total }}</th><th>first_event</th><th>last_event</th></tr>
+    {% for row in totals %}
+    <tr><td>{{ row[0] }}</td><td>{{ row[1] }}</td><td>{{ row[2] }}</td><td>{{ row[3] }}</td></tr>
+    {% endfor %}
+  </table>
+
+  <table>
+    <tr><th>year</th><th>week</th><th>destination_tag</th><th>{{ T.total }}</th></tr>
+    {% for row in weekly %}
+    <tr><td>{{ row[0] }}</td><td>{{ row[1] }}</td><td>{{ row[2] }}</td><td>{{ row[3] }}</td></tr>
+    {% endfor %}
+  </table>
+</body>
+</html>

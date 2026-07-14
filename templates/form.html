@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ T.app_title }}</title>
+  <style>
+    body { font-family: sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
+    fieldset { margin-bottom: 24px; padding: 16px; }
+    label { display: block; margin: 10px 0 4px; font-weight: 500; }
+    input[type=text], textarea, select { width: 100%; padding: 6px; box-sizing: border-box; }
+    .radio-row label { display: inline; font-weight: normal; margin-right: 16px; }
+    .lang-switch { float: right; }
+    .errors { color: #a32d2d; }
+    button { padding: 10px 20px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div class="lang-switch">
+    <a href="?lang=en">EN</a> | <a href="?lang=tr">TR</a>
+  </div>
+  <h1>{{ T.app_title }}</h1>
+
+  {% if errors %}
+    <div class="errors">
+      <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+    </div>
+  {% endif %}
+
+  <form method="post" action="/submit?lang={{ lang }}">
+    <fieldset>
+      <legend>{{ T.source_label }}</legend>
+      <label>{{ T.source_label }}</label>
+      <input type="text" name="source_label" value="{{ T.source_hint }}">
+      <label>{{ T.raw_description }}</label>
+      <textarea name="raw_description" rows="3"></textarea>
+    </fieldset>
+
+    <fieldset>
+      <legend>{{ T.extract_title }}</legend>
+      <label>{{ T.extract_fact }}</label>
+      <textarea name="extract_fact" rows="2"></textarea>
+      <label>{{ T.extract_third_party_version }}</label>
+      <textarea name="extract_third_party_version" rows="2"></textarea>
+      <label>{{ T.extract_is_evidence_based }}</label>
+      <div class="radio-row">
+        <label><input type="radio" name="extract_is_evidence_based" value="yes"> {{ T.yes }}</label>
+        <label><input type="radio" name="extract_is_evidence_based" value="no"> {{ T.no }}</label>
+      </div>
+      <label>{{ T.extract_is_recurring_pattern }}</label>
+      <div class="radio-row">
+        <label><input type="radio" name="extract_is_recurring_pattern" value="yes"> {{ T.yes }}</label>
+        <label><input type="radio" name="extract_is_recurring_pattern" value="no"> {{ T.no }}</label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>{{ T.transform_title }}</legend>
+      <label>{{ T.transform_intensity_score }}</label>
+      <input type="text" name="transform_intensity_score" placeholder="1-10">
+      <label>{{ T.transform_is_proportional }}</label>
+      <div class="radio-row">
+        <label><input type="radio" name="transform_is_proportional" value="yes"> {{ T.yes }}</label>
+        <label><input type="radio" name="transform_is_proportional" value="no"> {{ T.no }}</label>
+      </div>
+      <label>{{ T.transform_signal_type }}</label>
+      <select name="transform_signal_type">
+        <option value="action_needed">{{ T.transform_signal_action }}</option>
+        <option value="needs_processing">{{ T.transform_signal_processing }}</option>
+      </select>
+      <label>{{ T.transform_serves_purpose }}</label>
+      <div class="radio-row">
+        <label><input type="radio" name="transform_serves_purpose" value="yes"> {{ T.yes }}</label>
+        <label><input type="radio" name="transform_serves_purpose" value="no"> {{ T.no }}</label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>{{ T.filter_title }}</legend>
+      <label>{{ T.filter_feels_familiar }}</label>
+      <div class="radio-row">
+        <label><input type="radio" name="filter_feels_familiar" value="yes"> {{ T.yes }}</label>
+        <label><input type="radio" name="filter_feels_familiar" value="no"> {{ T.no }}</label>
+      </div>
+      <label>{{ T.filter_reaction_vs_event_size }}</label>
+      <select name="filter_reaction_vs_event_size">
+        <option value="equal">{{ T.filter_reaction_equal }}</option>
+        <option value="bigger">{{ T.filter_reaction_bigger }}</option>
+      </select>
+      <label>{{ T.filter_would_react_same_stranger }}</label>
+      <div class="radio-row">
+        <label><input type="radio" name="filter_would_react_same_stranger" value="yes"> {{ T.yes }}</label>
+        <label><input type="radio" name="filter_would_react_same_stranger" value="no"> {{ T.no }}</label>
+      </div>
+      <label>{{ T.filter_echoes_childhood }}</label>
+      <div class="radio-row">
+        <label><input type="radio" name="filter_echoes_childhood" value="yes"> {{ T.yes }}</label>
+        <label><input type="radio" name="filter_echoes_childhood" value="no"> {{ T.no }}</label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>{{ T.destination_title }}</legend>
+      <label>{{ T.destination_tag }} ({{ T.transform_signal_type | lower }} → auto-suggested, override if needed)</label>
+      <select name="destination_tag">
+        <option value="">(auto)</option>
+        <option value="system">system</option>
+        <option value="archive">archive</option>
+      </select>
+      <label>{{ T.destination_note }}</label>
+      <input type="text" name="destination_note">
+    </fieldset>
+
+    <button type="submit">{{ T.submit }}</button>
+  </form>
+</body>
+</html>
