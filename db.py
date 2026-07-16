@@ -13,6 +13,8 @@ never hardcoded:
 
 import os
 
+from werkzeug.security import generate_password_hash, check_password_hash
+
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -59,15 +61,42 @@ def get_connection():
     return pyodbc.connect(get_connection_string())
 
 
+def create_user(conn, email: str, password: str) -> int:
+    """Insert a new user with a hashed password. Returns the new user_id."""
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO dbo.users (email, password_hash) OUTPUT INSERTED.user_id VALUES (?, ?);",
+        email,
+        generate_password_hash(password),
+    )
+    user_id = cursor.fetchone()[0]
+    conn.commit()
+    return user_id
+
+
+def get_user_by_email(conn, email: str):
+    """Returns a (user_id, email, password_hash) row, or None if no such user."""
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT user_id, email, password_hash FROM dbo.users WHERE email = ?;",
+        email,
+    )
+    return cursor.fetchone()
+
+
+def verify_password(password_hash: str, password: str) -> bool:
+    return check_password_hash(password_hash, password)
+
+
 INSERT_EVENT_SQL = """
 INSERT INTO dbo.events (
-    language, source_label, raw_description,
+    user_id, language, source_label, raw_description,
     extract_fact, extract_third_party_version, extract_is_evidence_based, extract_is_recurring_pattern,
     transform_intensity_score, transform_is_proportional, transform_signal_type, transform_serves_purpose,
     filter_feels_familiar, filter_reaction_vs_event_size, filter_would_react_same_stranger, filter_echoes_childhood,
     destination_tag, destination_note
 ) VALUES (
-    ?, ?, ?,
+    ?, ?, ?, ?,
     ?, ?, ?, ?,
     ?, ?, ?, ?,
     ?, ?, ?, ?,
@@ -82,6 +111,7 @@ def insert_event(conn, payload: dict) -> None:
     cursor = conn.cursor()
     cursor.execute(
         INSERT_EVENT_SQL,
+        payload.get("user_id"),
         payload.get("language", "en"),
         payload.get("source_label", "Unreasonable situation"),
         payload.get("raw_description"),
@@ -103,15 +133,23 @@ def insert_event(conn, payload: dict) -> None:
     conn.commit()
 
 
-def get_total_counts(conn) -> list:
-    """Returns rows: (destination_tag, trigger_count, first_event, last_event)."""
+def get_total_counts(conn, user_id) -> list:
+    """Returns rows: (destination_tag, trigger_count, first_event, last_event) for one user."""
     cursor = conn.cursor()
-    cursor.execute("SELECT destination_tag, trigger_count, first_event, last_event FROM dbo.v_trigger_counts_total;")
+    cursor.execute(
+        "SELECT destination_tag, trigger_count, first_event, last_event "
+        "FROM dbo.v_trigger_counts_total WHERE user_id = ?;",
+        user_id,
+    )
     return cursor.fetchall()
 
 
-def get_weekly_counts(conn) -> list:
-    """Returns rows: (year, week, destination_tag, trigger_count)."""
+def get_weekly_counts(conn, user_id) -> list:
+    """Returns rows: (year, week, destination_tag, trigger_count) for one user."""
     cursor = conn.cursor()
-    cursor.execute("SELECT year, week, destination_tag, trigger_count FROM dbo.v_trigger_counts_weekly ORDER BY year, week;")
+    cursor.execute(
+        "SELECT year, week, destination_tag, trigger_count "
+        "FROM dbo.v_trigger_counts_weekly WHERE user_id = ? ORDER BY year, week;",
+        user_id,
+    )
     return cursor.fetchall()

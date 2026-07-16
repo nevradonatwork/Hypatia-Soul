@@ -8,12 +8,19 @@ class FakeCursor:
     def __init__(self):
         self.executed = []  # list of (sql, params)
         self.fetch_result = []
+        self.fetchone_result = None
+        self.fetchone_queue = []  # if set, fetchone() pops these in order first
 
     def execute(self, sql, *params):
         self.executed.append((sql, params))
 
     def fetchall(self):
         return self.fetch_result
+
+    def fetchone(self):
+        if self.fetchone_queue:
+            return self.fetchone_queue.pop(0)
+        return self.fetchone_result
 
 
 class FakeConnection:
@@ -33,6 +40,7 @@ class FakeConnection:
 
 def sample_payload():
     return {
+        "user_id": 1,
         "language": "en",
         "source_label": "Unreasonable situation",
         "raw_description": "he withheld the passport",
@@ -61,9 +69,10 @@ def test_insert_event_executes_and_commits():
     assert len(conn._cursor.executed) == 1
     sql, params = conn._cursor.executed[0]
     assert "INSERT INTO dbo.events" in sql
-    # 17 columns -> 17 bound params
-    assert len(params) == 17
-    assert params[0] == "en"
+    # user_id + 17 columns -> 18 bound params
+    assert len(params) == 18
+    assert params[0] == 1
+    assert params[1] == "en"
     assert params[-2] == "system"
 
 
@@ -72,23 +81,61 @@ def test_insert_event_defaults_when_fields_missing():
     db.insert_event(conn, {"raw_description": "x", "extract_fact": "y"})
 
     sql, params = conn._cursor.executed[0]
-    assert params[0] == "en"  # default language
-    assert params[1] == "Unreasonable situation"  # default source_label
+    assert params[0] is None  # no user_id supplied
+    assert params[1] == "en"  # default language
+    assert params[2] == "Unreasonable situation"  # default source_label
     assert params[-2] == "archive"  # default destination_tag
 
 
 def test_get_total_counts_returns_rows():
     conn = FakeConnection()
     conn._cursor.fetch_result = [("system", 3, "2026-01-01", "2026-01-10")]
-    rows = db.get_total_counts(conn)
+    rows = db.get_total_counts(conn, 1)
     assert rows == [("system", 3, "2026-01-01", "2026-01-10")]
+    sql, params = conn._cursor.executed[0]
+    assert "WHERE user_id = ?" in sql
+    assert params == (1,)
 
 
 def test_get_weekly_counts_returns_rows():
     conn = FakeConnection()
     conn._cursor.fetch_result = [(2026, 2, "archive", 1)]
-    rows = db.get_weekly_counts(conn)
+    rows = db.get_weekly_counts(conn, 1)
     assert rows == [(2026, 2, "archive", 1)]
+    sql, params = conn._cursor.executed[0]
+    assert "WHERE user_id = ?" in sql
+    assert params == (1,)
+
+
+def test_create_user_hashes_password_and_returns_id():
+    conn = FakeConnection()
+    conn._cursor.fetchone_result = (42,)
+    user_id = db.create_user(conn, "nevra@example.com", "supersecret")
+
+    assert user_id == 42
+    assert conn.committed is True
+    sql, params = conn._cursor.executed[0]
+    assert "INSERT INTO dbo.users" in sql
+    assert params[0] == "nevra@example.com"
+    assert params[1] != "supersecret"  # stored as a hash, not plaintext
+
+
+def test_get_user_by_email_returns_row():
+    conn = FakeConnection()
+    conn._cursor.fetchone_result = (1, "nevra@example.com", "hashed")
+    row = db.get_user_by_email(conn, "nevra@example.com")
+    assert row == (1, "nevra@example.com", "hashed")
+
+
+def test_verify_password_roundtrip():
+    conn = FakeConnection()
+    conn._cursor.fetchone_result = (1,)
+    db.create_user(conn, "a@example.com", "supersecret")
+    _, params = conn._cursor.executed[0]
+    password_hash = params[1]
+
+    assert db.verify_password(password_hash, "supersecret") is True
+    assert db.verify_password(password_hash, "wrongpassword") is False
 
 
 def test_get_connection_string_defaults_to_windows_auth(monkeypatch):

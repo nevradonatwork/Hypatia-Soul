@@ -8,13 +8,86 @@ from test_db import FakeConnection
 
 
 @pytest.fixture
-def client(monkeypatch):
+def anon_client(monkeypatch):
+    """A test client with no logged-in user."""
     fake_conn = FakeConnection()
     monkeypatch.setattr(db, "get_connection", lambda: fake_conn)
     app_module.app.config["TESTING"] = True
     with app_module.app.test_client() as c:
         c.fake_conn = fake_conn
         yield c
+
+
+@pytest.fixture
+def client(anon_client):
+    """A test client with a fake logged-in user (user_id=1)."""
+    with anon_client.session_transaction() as sess:
+        sess["user_id"] = 1
+        sess["email"] = "nevra@example.com"
+    return anon_client
+
+
+def test_index_requires_login(anon_client):
+    resp = anon_client.get("/")
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+
+def test_submit_requires_login(anon_client):
+    resp = anon_client.post("/submit", data={"raw_description": "x"})
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+
+def test_counts_requires_login(anon_client):
+    resp = anon_client.get("/counts")
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+
+def test_register_creates_user_and_logs_in(anon_client):
+    # first fetchone(): get_user_by_email -> no existing user; second: create_user's new id
+    anon_client.fake_conn._cursor.fetchone_queue = [None, (5,)]
+    resp = anon_client.post("/register", data={"email": "new@example.com", "password": "supersecret"})
+    assert resp.status_code == 302
+    assert "/" in resp.headers["Location"]
+    with anon_client.session_transaction() as sess:
+        assert sess["user_id"] is not None
+        assert sess["email"] == "new@example.com"
+
+
+def test_register_rejects_short_password(anon_client):
+    resp = anon_client.post("/register", data={"email": "new@example.com", "password": "short"})
+    assert resp.status_code == 400
+    with anon_client.session_transaction() as sess:
+        assert "user_id" not in sess
+
+
+def test_login_succeeds_with_correct_password(anon_client):
+    from werkzeug.security import generate_password_hash
+    anon_client.fake_conn._cursor.fetchone_result = (7, "nevra@example.com", generate_password_hash("supersecret"))
+
+    resp = anon_client.post("/login", data={"email": "nevra@example.com", "password": "supersecret"})
+    assert resp.status_code == 302
+    with anon_client.session_transaction() as sess:
+        assert sess["user_id"] == 7
+
+
+def test_login_fails_with_wrong_password(anon_client):
+    from werkzeug.security import generate_password_hash
+    anon_client.fake_conn._cursor.fetchone_result = (7, "nevra@example.com", generate_password_hash("supersecret"))
+
+    resp = anon_client.post("/login", data={"email": "nevra@example.com", "password": "wrong"})
+    assert resp.status_code == 401
+    with anon_client.session_transaction() as sess:
+        assert "user_id" not in sess
+
+
+def test_logout_clears_session(client):
+    resp = client.get("/logout")
+    assert resp.status_code == 302
+    with client.session_transaction() as sess:
+        assert "user_id" not in sess
 
 
 def test_index_page_loads_english_by_default(client):
@@ -85,7 +158,7 @@ def test_submit_unsure_and_unanswered_yes_no_fields_store_null(client):
         # filter_feels_familiar intentionally omitted (not answered)
     })
     _, params = client.fake_conn._cursor.executed[0]
-    # column order: language, source_label, raw_description, extract_fact,
+    # column order: user_id, language, source_label, raw_description, extract_fact,
     # extract_third_party_version, extract_is_evidence_based, extract_is_recurring_pattern, ...
-    assert params[5] is None  # extract_is_evidence_based -> "unsure" maps to NULL
-    assert params[11] is None  # filter_feels_familiar -> unanswered maps to NULL
+    assert params[6] is None  # extract_is_evidence_based -> "unsure" maps to NULL
+    assert params[12] is None  # filter_feels_familiar -> unanswered maps to NULL

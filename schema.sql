@@ -10,10 +10,22 @@ GO
 USE TriggerTracker;
 GO
 
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'users')
+BEGIN
+    CREATE TABLE dbo.users (
+        user_id        INT IDENTITY(1,1) PRIMARY KEY,
+        email          NVARCHAR(255) NOT NULL UNIQUE,
+        password_hash  NVARCHAR(255) NOT NULL,
+        created_at     DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    );
+END
+GO
+
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'events')
 BEGIN
     CREATE TABLE dbo.events (
         event_id            INT IDENTITY(1,1) PRIMARY KEY,
+        user_id             INT NULL REFERENCES dbo.users(user_id),
         created_at          DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
         language            NVARCHAR(5)   NOT NULL DEFAULT 'en',  -- 'en' or 'tr'
 
@@ -46,6 +58,13 @@ BEGIN
 END
 GO
 
+-- Migration guard: adds user_id to an events table created before multi-user support existed
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('dbo.events') AND name = 'user_id')
+BEGIN
+    ALTER TABLE dbo.events ADD user_id INT NULL REFERENCES dbo.users(user_id);
+END
+GO
+
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'destination_tags')
 BEGIN
     CREATE TABLE dbo.destination_tags (
@@ -59,24 +78,26 @@ BEGIN
 END
 GO
 
--- How many times triggered, grouped by destination, per week
+-- How many times triggered, grouped by destination, per week, per user
 CREATE OR ALTER VIEW dbo.v_trigger_counts_weekly AS
 SELECT
+    user_id,
     DATEPART(YEAR, created_at)  AS year,
     DATEPART(WEEK, created_at)  AS week,
     destination_tag,
     COUNT(*) AS trigger_count
 FROM dbo.events
-GROUP BY DATEPART(YEAR, created_at), DATEPART(WEEK, created_at), destination_tag;
+GROUP BY user_id, DATEPART(YEAR, created_at), DATEPART(WEEK, created_at), destination_tag;
 GO
 
--- Overall totals per destination
+-- Overall totals per destination, per user
 CREATE OR ALTER VIEW dbo.v_trigger_counts_total AS
 SELECT
+    user_id,
     destination_tag,
     COUNT(*) AS trigger_count,
     MIN(created_at) AS first_event,
     MAX(created_at) AS last_event
 FROM dbo.events
-GROUP BY destination_tag;
+GROUP BY user_id, destination_tag;
 GO

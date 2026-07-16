@@ -39,8 +39,10 @@ sitesinden indirilebilir).
 python app.py
 ```
 
-Tarayıcıda `http://localhost:5050` adresine git. Sağ üstten EN/TR arasında geçiş
-yapabilirsin.
+Tarayıcıda `http://localhost:5050` adresine git. Giriş yapmamış kullanıcılar
+`/login`'e yönlendirilir; hesabın yoksa oradan `/register` ile e-posta ve şifreyle
+bir hesap oluşturabilirsin. Her kullanıcının kayıtları ve sayaçları (`/counts`)
+kendi hesabına özeldir. Sağ üstten EN/TR arasında geçiş yapabilirsin.
 
 ## Testler
 
@@ -53,12 +55,12 @@ Bu yüzden `pyodbc` kurulu olmasa bile testler çalışır.
 
 ## Yapı
 
-- `schema.sql` — SQL Server şeması (events tablosu + count view'ları)
+- `schema.sql` — SQL Server şeması (users tablosu, sorular/cevaplar için events tablosu, count view'ları)
 - `translations.py` — EN/TR metinler
 - `logic.py` — hedef (system/archive) önerisi ve validasyon
-- `db.py` — SQL Server bağlantısı ve insert/select fonksiyonları
-- `app.py` — Flask arayüzü
-- `templates/` — form ve counts sayfaları
+- `db.py` — SQL Server bağlantısı, kullanıcı (register/login) ve insert/select fonksiyonları
+- `app.py` — Flask arayüzü (login/register/logout + form/counts, girişi zorunlu kılan login_required)
+- `templates/` — login, register, form ve counts sayfaları
 - `tests/` — veri katmanı, iş mantığı, arka yüz testleri
 
 ## Sonraki adımlar (istersen)
@@ -67,5 +69,4 @@ Bu yüzden `pyodbc` kurulu olmasa bile testler çalışır.
   geri kalan mantık aynı kalır.
 - Şu an her event tek satırda kaydediliyor; istersen event_questions_log gibi ayrı bir tabloya
   geçip her soruyu ayrı satır olarak tutabiliriz (daha esnek ama daha karmaşık).
-- Manuel destination_tag override'ı şu an dropdown'da "(auto)" seçeneğiyle boş bırakılabiliyor,
-  form.html'de select'e default olarak boş değer atanmalı (küçük bir iyileştirme).
+- Şifre sıfırlama (forgot password) akışı henüz yok.

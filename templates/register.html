@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ T.register_title }}</title>
+  <style>
+    body { font-family: sans-serif; max-width: 420px; margin: 40px auto; padding: 0 16px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    td.question { padding: 10px 8px; vertical-align: top; width: 40%; border-bottom: 1px solid #ddd; }
+    td.answer { padding: 10px 8px; vertical-align: top; border-bottom: 1px solid #ddd; }
+    input[type=email], input[type=password] { width: 100%; padding: 6px; box-sizing: border-box; }
+    .lang-switch { float: right; }
+    .errors { color: #a32d2d; }
+    button { padding: 10px 20px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div class="lang-switch">
+    <a href="?lang=en">EN</a> | <a href="?lang=tr">TR</a>
+  </div>
+  <h1>{{ T.register_title }}</h1>
+
+  {% if errors %}
+    <div class="errors">
+      <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+    </div>
+  {% endif %}
+
+  <form method="post" action="/register?lang={{ lang }}">
+    <table>
+      <tr>
+        <td class="question">{{ T.email }}</td>
+        <td class="answer"><input type="email" name="email" required></td>
+      </tr>
+      <tr>
+        <td class="question">{{ T.password }}</td>
+        <td class="answer"><input type="password" name="password" required minlength="8"></td>
+      </tr>
+    </table>
+    <button type="submit">{{ T.register_submit }}</button>
+  </form>
+
+  <p>{{ T.have_account }} <a href="/login?lang={{ lang }}">{{ T.login_title }}</a></p>
+</body>
+</html>
